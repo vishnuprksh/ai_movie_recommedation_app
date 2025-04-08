@@ -1,7 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Movie, MovieRecommendationsProps } from '../types';
 
-export default function MovieRecommendations({ movies, isLoading, error }: MovieRecommendationsProps) {
+export default function MovieRecommendations({ movies: initialMovies, isLoading, error, onMovieWatched }: MovieRecommendationsProps) {
+  console.log('MovieRecommendations rendered with props:', { initialMovies, isLoading, error });
+  const [movies, setMovies] = useState(initialMovies);
+  const [loadingStates, setLoadingStates] = useState<{ [key: string]: boolean }>({});
+
+  React.useEffect(() => {
+    console.log('Movies state updated:', movies);
+  }, [movies]);
+
+  React.useEffect(() => {
+    console.log('Initial movies changed:', initialMovies);
+    setMovies(initialMovies);
+  }, [initialMovies]);
+
+  const handleMovieWatched = async (movieTitle: string, index: number) => {
+    if (!onMovieWatched) return;
+
+    setLoadingStates(prev => ({ ...prev, [movieTitle]: true }));
+    const newMovie = await onMovieWatched(movieTitle);
+    setLoadingStates(prev => ({ ...prev, [movieTitle]: false }));
+
+    if (newMovie) {
+      setMovies(prev => {
+        const updated = [...prev];
+        updated[index] = newMovie;
+        return updated;
+      });
+    }
+  };
+
   if (error) {
     return (
       <div className="max-w-4xl mx-auto p-6">
@@ -41,7 +70,7 @@ export default function MovieRecommendations({ movies, isLoading, error }: Movie
       <div className="space-y-6">
         {movies.map((movie, index) => (
           <div
-            key={index}
+            key={`${movie.title}-${index}`}
             data-testid="movie-card"
             className="bg-gray-800/80 rounded-xl p-8 transform transition-all duration-300 
                      hover:scale-[1.02] border border-gray-700/50 hover:border-blue-500/50 
@@ -51,10 +80,20 @@ export default function MovieRecommendations({ movies, isLoading, error }: Movie
               <h3 className="text-2xl font-semibold text-white group-hover:text-blue-400 transition-colors">
                 {movie.title}
               </h3>
-              <span className="px-4 py-2 bg-blue-500/20 text-blue-400 text-sm rounded-full border border-blue-500/30
-                           group-hover:bg-blue-500 group-hover:text-white transition-all">
-                {movie.matchScore}% Match
-              </span>
+              <div className="flex items-center gap-4">
+                <span className="px-4 py-2 bg-blue-500/20 text-blue-400 text-sm rounded-full border border-blue-500/30
+                             group-hover:bg-blue-500 group-hover:text-white transition-all">
+                  {movie.matchScore}% Match
+                </span>
+                <button
+                  onClick={() => handleMovieWatched(movie.title, index)}
+                  disabled={loadingStates[movie.title]}
+                  className="px-4 py-2 bg-purple-500/20 text-purple-400 text-sm rounded-full border border-purple-500/30
+                           hover:bg-purple-500 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingStates[movie.title] ? 'Loading...' : 'Already Watched'}
+                </button>
+              </div>
             </div>
             <p className="text-gray-300 leading-relaxed">{movie.description}</p>
           </div>

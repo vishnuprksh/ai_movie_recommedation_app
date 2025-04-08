@@ -21,6 +21,7 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "dotenv": "^16.4.7",
     "next": "latest",
     "openai": "latest",
     "react": "latest",

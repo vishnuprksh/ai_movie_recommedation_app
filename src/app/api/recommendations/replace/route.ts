@@ -1,32 +1,22 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { config, validateConfig } from '../../../config/env';
-
-try {
-  validateConfig();
-} catch (error) {
-  console.error('Environment configuration error:', error);
-}
 
 const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
+  apiKey: process.env.OPENAI_API_KEY || 'your-api-key-here',
 });
 
 export async function POST(request: Request) {
   try {
-    // Validate environment configuration
-    validateConfig();
+    const { answers, watchedMovie } = await request.json();
     
-    const { answers } = await request.json();
-    
-    if (!answers || !Array.isArray(answers) || answers.length !== 5) {
+    if (!answers || !Array.isArray(answers) || answers.length !== 5 || !watchedMovie) {
       return NextResponse.json(
-        { error: 'Invalid answers format' },
+        { error: 'Invalid request format' },
         { status: 400 }
       );
     }
 
-    const prompt = `As a cinematic AI curator, analyze these viewer preferences and recommend 3 perfect movies:
+    const prompt = `As a cinematic AI curator, analyze these viewer preferences and recommend 1 perfect movie to replace "${watchedMovie}" that they've already watched:
 
 1. Character Preference: ${answers[0]}
 2. Viewing Atmosphere: ${answers[1]}
@@ -34,22 +24,15 @@ export async function POST(request: Request) {
 4. Preferred Era: ${answers[3]}
 5. Desired Impact: ${answers[4]}
 
-For each recommendation, consider:
-- How it matches their character preference
-- The emotional atmosphere it creates
-- Its strongest cinematic elements
-- The era and its significance
-- The lasting impact it leaves
-
-Provide 3 highly personalized recommendations in this format:
+Provide 1 highly personalized recommendation in this format:
 1. Movie Title
 Description: A compelling reason why this movie perfectly matches their preferences
 Match Score: [85-100 based on fit]
 
-Focus on creating a diverse selection that still maintains high relevance to their preferences.`;
+Important: Do NOT recommend "${watchedMovie}" or any extremely similar movies.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4", // You can replace this with gpt-4-mini when available
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -61,7 +44,7 @@ Focus on creating a diverse selection that still maintains high relevance to the
         }
       ],
       temperature: 0.7,
-      max_tokens: 1000,
+      max_tokens: 500,
     });
 
     const response = completion.choices[0].message.content;
@@ -74,18 +57,19 @@ Focus on creating a diverse selection that still maintains high relevance to the
     }
     
     const movies = parseAIResponse(response);
-
-    return NextResponse.json({ recommendations: movies });
-  } catch (error) {
-    console.error('Error:', error);
-    if (error instanceof Error && error.message.includes('OPENAI_API_KEY')) {
+    
+    if (movies.length === 0) {
       return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
+        { error: 'Failed to parse AI response' },
         { status: 500 }
       );
     }
+
+    return NextResponse.json({ movie: movies[0] });
+  } catch (error) {
+    console.error('Error:', error);
     return NextResponse.json(
-      { error: 'Failed to generate recommendations' },
+      { error: 'Failed to generate recommendation' },
       { status: 500 }
     );
   }

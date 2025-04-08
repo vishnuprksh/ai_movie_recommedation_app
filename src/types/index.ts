@@ -18,4 +18,5 @@ export interface MovieRecommendationsProps {
   movies: Movie[];
   isLoading: boolean;
   error?: string;
+  onMovieWatched?: (movieTitle: string) => Promise<Movie | undefined>;
 }
