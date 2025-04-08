@@ -11,7 +11,7 @@ try {
 
 export async function POST(request: Request) {
   try {
-    const { answers, watchedMovie, model = 'groq', language = 'English' } = await request.json();
+    const { answers, watchedMovie, model = 'groq', language = 'English', watchedMovies = [] } = await request.json();
     
     if (!answers || !Array.isArray(answers) || !watchedMovie) {
       return NextResponse.json(
@@ -19,6 +19,10 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const watchedMoviesStr = watchedMovies.length > 0 
+      ? `\nAdditionally, do NOT recommend any of these already watched movies:\n${watchedMovies.join('\n')}`
+      : '';
 
     const prompt = `As a cinematic AI curator, analyze these viewer preferences and recommend 1 perfect movie to replace "${watchedMovie}" that they've already watched:
 
@@ -29,7 +33,7 @@ Category: ${a.question.category}
 Answer: ${a.answer}
 `).join('\n')}
 
-IMPORTANT: Prioritize movies in ${language} language when available and suitable for the viewer's preferences. For non-${language} movies, note if they are subtitled or dubbed.
+IMPORTANT: Prioritize movies in ${language} language when available and suitable for the viewer's preferences. For non-${language} movies, note if they are subtitled or dubbed.${watchedMoviesStr}
 
 Provide exactly 1 recommendation using EXACTLY this format (including the numbering and labels):
 
@@ -96,7 +100,7 @@ Important:
         ],
         model: "meta-llama/llama-4-scout-17b-16e-instruct",
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 1000,
         top_p: 1,
         stream: false,
         stop: null
@@ -104,31 +108,31 @@ Important:
 
       response = completion.choices[0]?.message?.content;
     }
-    
+
     if (!response) {
       return NextResponse.json(
         { error: 'No response from AI' },
         { status: 500 }
       );
     }
+    
+    const movieMatch = response.match(/Movie Title:\s*(.+?)[\n\r]/);
+    const descriptionMatch = response.match(/Description:\s*(.+?)[\n\r]/);
+    const scoreMatch = response.match(/Match Score:\s*(\d+)/);
 
-    const parsedMovies = parseAIResponse(response);
-    console.log('Parsed response:', parsedMovies);
-
-    if (parsedMovies.length === 0) {
-      return NextResponse.json(
-        { error: 'Failed to parse AI response' },
-        { status: 500 }
-      );
-    }
-
-    const movie = parsedMovies[0];
-    if (!movie.title || !movie.description || typeof movie.matchScore !== 'number') {
+    if (!movieMatch || !descriptionMatch || !scoreMatch) {
+      console.error('Failed to parse movie data from:', response);
       return NextResponse.json(
         { error: 'Invalid movie data format' },
         { status: 500 }
       );
     }
+
+    const movie = {
+      title: movieMatch[1].trim(),
+      description: descriptionMatch[1].trim(),
+      matchScore: parseInt(scoreMatch[1])
+    };
 
     return NextResponse.json({ movie });
   } catch (error) {
@@ -138,79 +142,4 @@ Important:
       { status: 500 }
     );
   }
-}
-
-function parseAIResponse(response: string): Array<{
-  title: string;
-  description: string;
-  matchScore: number;
-}> {
-  console.log('Raw AI response:', response);
-  const movies: Array<{
-    title: string;
-    description: string;
-    matchScore: number;
-  }> = [];
-  
-  // Split into blocks by double newlines to handle potential multiple recommendations
-  const blocks = response.split(/\n{2,}/);
-  console.log('Processing blocks:', blocks);
-
-  for (const block of blocks) {
-    // Split block into lines and clean them
-    const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
-    if (lines.length === 0) continue;
-    
-    console.log('Processing lines:', lines);
-
-    // Find title line
-    const titleLine = lines.find(line => 
-      line.toLowerCase().includes('title:') || 
-      /^\d+\./.test(line)
-    );
-
-    let title = '';
-    if (titleLine) {
-      title = titleLine
-        .replace(/^\d+\.\s*/, '') // Remove numbering
-        .replace(/^.*?title:\s*/i, '') // Remove "Movie Title:" or similar
-        .trim();
-    }
-
-    // Find description
-    const descriptionLine = lines.find(line => 
-      line.toLowerCase().startsWith('description:')
-    );
-    let description = '';
-    if (descriptionLine) {
-      description = descriptionLine
-        .replace(/^description:\s*/i, '')
-        .trim();
-    }
-
-    // Find match score
-    const scoreLine = lines.find(line => 
-      line.toLowerCase().includes('match score:')
-    );
-    let matchScore = 85; // Default score
-    if (scoreLine) {
-      const match = scoreLine.match(/\d+/);
-      if (match) {
-        const score = parseInt(match[0], 10);
-        if (!isNaN(score) && score >= 0 && score <= 100) {
-          matchScore = score;
-        }
-      }
-    }
-
-    if (title && description) {
-      movies.push({
-        title,
-        description,
-        matchScore
-      });
-    }
-  }
-
-  return movies;
 }

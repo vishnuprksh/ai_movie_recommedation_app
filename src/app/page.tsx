@@ -14,12 +14,14 @@ export default function Home() {
   const [error, setError] = useState<string>();
   const [userAnswers, setUserAnswers] = useState<Array<{ question: Question; answer: string }>>([]);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [watchedMovies, setWatchedMovies] = useState<string[]>([]);
 
   const handleQuestionComplete = async (answers: Array<{ question: Question; answer: string }>) => {
     setIsLoading(true);
     setShowQuestions(false);
     setError(undefined);
     setUserAnswers(answers);
+    setWatchedMovies([]); // Reset watched movies when starting new recommendations
 
     try {
       const response = await fetch('/api/recommendations', {
@@ -30,7 +32,8 @@ export default function Home() {
         body: JSON.stringify({ 
           answers,
           model: config.defaultModel,
-          language: selectedLanguage 
+          language: selectedLanguage,
+          watchedMovies: [] // Initial request has no watched movies
         }),
       });
 
@@ -52,6 +55,41 @@ export default function Home() {
 
   const handleMovieWatched = async (movieTitle: string): Promise<Movie | undefined> => {
     try {
+      // Add the watched movie to our list
+      setWatchedMovies(prev => [...prev, movieTitle]);
+
+      // When we've watched all current movies, get a fresh batch
+      const currentMovies = movies.map(m => m.title);
+      if (currentMovies.every(title => watchedMovies.includes(title) || title === movieTitle)) {
+        const response = await fetch('/api/recommendations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            answers: userAnswers,
+            model: config.defaultModel,
+            language: selectedLanguage,
+            watchedMovies: [...watchedMovies, movieTitle] // Include all watched movies
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch new recommendations');
+        }
+
+        const data = await response.json();
+        if (!data.recommendations || !Array.isArray(data.recommendations)) {
+          throw new Error('Invalid recommendations format received');
+        }
+
+        // Update the movies list with new recommendations
+        setMovies(data.recommendations);
+        // Return the first movie from the new batch
+        return data.recommendations[0];
+      }
+
+      // Otherwise, get a single replacement movie
       const response = await fetch('/api/recommendations/replace', {
         method: 'POST',
         headers: {
@@ -61,7 +99,8 @@ export default function Home() {
           answers: userAnswers,
           watchedMovie: movieTitle,
           model: config.defaultModel,
-          language: selectedLanguage
+          language: selectedLanguage,
+          watchedMovies: [...watchedMovies, movieTitle] // Include all watched movies
         }),
       });
 

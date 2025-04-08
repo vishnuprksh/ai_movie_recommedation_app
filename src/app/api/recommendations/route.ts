@@ -5,8 +5,8 @@ import { config } from '../../../config/env';
 
 export async function POST(request: Request) {
   try {
-    const { answers, model = 'groq', language = 'English' } = await request.json();
-    console.log('Received request:', { answers, model, language });
+    const { answers, model = 'groq', language = 'English', watchedMovies = [] } = await request.json();
+    console.log('Received request:', { answers, model, language, watchedMovies });
     
     if (!answers || !Array.isArray(answers) || answers.length < 1) {
       console.error('Invalid answers format received:', answers);
@@ -107,11 +107,15 @@ Create a concise but insightful profile of this viewer's movie preferences, cons
     }
 
     // Second prompt: Use viewer profile to generate recommendations
+    const watchedMoviesStr = watchedMovies.length > 0 
+      ? `\nIMPORTANT: Do NOT recommend any of these already watched movies:\n${watchedMovies.join('\n')}`
+      : '';
+
     const recommendationPrompt = `As a cinematic AI curator, use this viewer profile to recommend 10 perfect movies.
 
 ${viewerProfile}
 
-IMPORTANT: Prioritize movies in ${language} language when available and suitable for the viewer's preferences. For non-${language} movies, note if they are subtitled or dubbed.
+IMPORTANT: Prioritize movies in ${language} language when available and suitable for the viewer's preferences. For non-${language} movies, note if they are subtitled or dubbed.${watchedMoviesStr}
 
 Please provide exactly 10 recommendations in this specific format:
 
