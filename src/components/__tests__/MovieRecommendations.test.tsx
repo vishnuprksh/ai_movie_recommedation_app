@@ -30,7 +30,7 @@ describe('MovieRecommendations', () => {
 
   it('handles empty movies array', () => {
     render(<MovieRecommendations movies={[]} isLoading={false} />);
-    expect(screen.getByText('Your Personalized Movie Recommendations')).toBeInTheDocument();
+    expect(screen.getByText('Your Movie Discoveries')).toBeInTheDocument();
     expect(screen.queryByTestId('movie-card')).not.toBeInTheDocument();
   });
 
@@ -43,7 +43,8 @@ describe('MovieRecommendations', () => {
       }
     ];
     render(<MovieRecommendations movies={mockMovies} isLoading={false} />);
-    expect(screen.getByText('85% Match')).toHaveClass('bg-blue-500', 'text-white');
+    const matchScore = screen.getByText('85% Match');
+    expect(matchScore).toHaveClass('bg-blue-500/20', 'text-blue-400');
   });
 
   it('displays multiple movies correctly', () => {
