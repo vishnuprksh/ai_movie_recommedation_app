@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     const { answers, model = 'groq' } = await request.json();
     
-    if (!answers || !Array.isArray(answers) || answers.length !== 5) {
+    if (!answers || !Array.isArray(answers) || answers.length < 1) {
       console.error('Invalid answers format received:', answers);
       return NextResponse.json(
         { error: 'Invalid answers format' },
@@ -15,31 +15,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = `As a cinematic AI curator, analyze these viewer preferences and recommend 3 perfect movies:
+    // First prompt: Analyze answers to create a viewer profile
+    const analysisPrompt = `As a cinema psychologist, analyze these viewer responses to create a detailed viewer profile:
 
-1. Character Preference: ${answers[0]}
-2. Viewing Atmosphere: ${answers[1]}
-3. Key Film Element: ${answers[2]}
-4. Preferred Era: ${answers[3]}
-5. Desired Impact: ${answers[4]}
+${answers.map(a => `Question: ${a.question.question}
+Category: ${a.question.category}
+Answer: ${a.answer}
+`).join('\n')}
 
-Please provide exactly 3 recommendations in this specific format:
+Create a concise but insightful profile of this viewer's movie preferences, considering:
+1. Their likely genre preferences
+2. Their viewing style and atmosphere preferences
+3. What film elements they value most
+4. Their era preferences
+5. What kind of impact they seek from movies
 
-1. Title: [Movie Name] (Year)
-Description: [One paragraph description]
-Match Score: [85-100]
+Format the response as a clear, natural paragraph that captures the essence of this viewer's taste in cinema.`;
 
-2. Title: [Movie Name] (Year)
-Description: [One paragraph description]
-Match Score: [85-100]
-
-3. Title: [Movie Name] (Year)
-Description: [One paragraph description]
-Match Score: [85-100]
-
-Make each recommendation thoughtful and personally tailored to the viewer's preferences.`;
-
-    let response;
+    let viewerProfile;
     
     if (model === 'gemini') {
       if (!process.env.GEMINI_API_KEY) {
@@ -57,7 +50,7 @@ Make each recommendation thoughtful and personally tailored to the viewer's pref
       const result = await geminiModel.generateContent({
         contents: [{
           role: "user",
-          parts: [{ text: prompt }],
+          parts: [{ text: analysisPrompt }],
         }],
         generationConfig: {
           temperature: 0.7,
@@ -67,7 +60,7 @@ Make each recommendation thoughtful and personally tailored to the viewer's pref
         },
       });
 
-      response = result.response.text();
+      viewerProfile = result.response.text();
     } else {
       // Default to Groq
       if (!process.env.GROQ_API_KEY) {
@@ -85,11 +78,86 @@ Make each recommendation thoughtful and personally tailored to the viewer's pref
         messages: [
           {
             role: "system",
+            content: "You are an expert film curator and cinema psychologist with deep knowledge of viewer preferences and movie recommendations."
+          },
+          {
+            role: "user",
+            content: analysisPrompt
+          }
+        ],
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 1,
+        stream: false,
+        stop: null
+      });
+
+      viewerProfile = completion.choices[0]?.message?.content;
+    }
+
+    if (!viewerProfile) {
+      return NextResponse.json(
+        { error: 'Failed to generate viewer profile' },
+        { status: 500 }
+      );
+    }
+
+    // Second prompt: Use viewer profile to generate recommendations
+    const recommendationPrompt = `As a cinematic AI curator, use this viewer profile to recommend 10 perfect movies:
+
+${viewerProfile}
+
+Please provide exactly 10 recommendations in this specific format:
+
+1. Title: [Movie Name] (Year)
+Description: [One paragraph description]
+Match Score: [60-100]
+
+2. Title: [Movie Name] (Year)
+Description: [One paragraph description]
+Match Score: [60-100]
+
+[...continue for all 10 movies...]
+
+Make each recommendation thoughtful and personally tailored to the viewer's profile.`;
+
+    let response;
+    
+    if (model === 'gemini') {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const geminiModel = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+      });
+
+      const result = await geminiModel.generateContent({
+        contents: [{
+          role: "user",
+          parts: [{ text: recommendationPrompt }],
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 8192,
+        },
+      });
+
+      response = result.response.text();
+    } else {
+      const groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY,
+      });
+
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
             content: "You are an expert film curator with deep knowledge of cinema across all eras, genres, and styles. Your recommendations are thoughtful, diverse, and personally tailored to each viewer's preferences."
           },
           {
             role: "user",
-            content: prompt
+            content: recommendationPrompt
           }
         ],
         model: "meta-llama/llama-4-scout-17b-16e-instruct",
@@ -113,7 +181,10 @@ Make each recommendation thoughtful and personally tailored to the viewer's pref
     const movies = parseAIResponse(response);
     console.log('Parsed movies:', movies);
     
-    return NextResponse.json({ recommendations: movies });
+    return NextResponse.json({ 
+      recommendations: movies,
+      viewerProfile // Include the viewer profile in the response
+    });
   } catch (error) {
     console.error('Error in recommendation route:', error);
     return NextResponse.json(
@@ -128,7 +199,6 @@ function parseAIResponse(response: string): Array<{
   description: string;
   matchScore: number;
 }> {
-  console.log('Raw AI response:', response);
   const movies: Array<{
     title: string;
     description: string;
