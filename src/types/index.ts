@@ -22,7 +22,6 @@ export interface MovieRecommendationsProps {
   error?: string;
   viewerProfile?: string;
   onMovieWatched?: (movieTitle: string) => Promise<Movie | undefined>;
-  onLoadMore?: () => Promise<void>;
   onReset?: () => void;
   language?: string;
 }

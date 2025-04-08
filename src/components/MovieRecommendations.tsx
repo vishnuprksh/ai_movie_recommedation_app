@@ -6,13 +6,11 @@ export default function MovieRecommendations({
   isLoading, 
   error,
   onMovieWatched,
-  onLoadMore,
   viewerProfile
 }: MovieRecommendationsProps & { viewerProfile?: string }) {
   const [remainingMovies, setRemainingMovies] = useState<Movie[]>([]);
   const [currentMovie, setCurrentMovie] = useState<Movie | null>(null);
   const [isWatchedLoading, setIsWatchedLoading] = useState(false);
-  const [watchedCount, setWatchedCount] = useState(0);
 
   useEffect(() => {
     if (movies.length > 0) {
@@ -34,14 +32,6 @@ export default function MovieRecommendations({
       if (nextMovies.length > 0) {
         setCurrentMovie(nextMovies[0]);
         setRemainingMovies(nextMovies);
-      }
-
-      // Increment watched count and check if we need to load more
-      const newWatchedCount = watchedCount + 1;
-      setWatchedCount(newWatchedCount);
-      
-      if (newWatchedCount % 5 === 0 && onLoadMore) {
-        await onLoadMore();
       }
 
       // Then, get the replacement movie in the background
@@ -66,7 +56,7 @@ export default function MovieRecommendations({
     } finally {
       setIsWatchedLoading(false);
     }
-  }, [remainingMovies, onMovieWatched, watchedCount, onLoadMore]);
+  }, [remainingMovies, onMovieWatched]);
 
   if (isLoading) {
     return (

@@ -4,235 +4,188 @@ import { Question, QuestionFlowProps } from '../types';
 const allQuestions: Question[] = [
   // Genre
   {
-    id: 3,
+    id: 1,
     category: 'genre',
-    question: "Your perfect weekend activity would be...",
+    question: "What should be happening in the first 5 minutes of your perfect movie?",
     options: [
-      "Solving an escape room",
-      "Dancing all night",
-      "Reading sci-fi novels",
-      "Rock climbing",
-      "Whatever feels right"
-    ]
-  },
-  {
-    id: 4,
-    category: 'genre',
-    question: "Pick your dream superpower:",
-    options: [
-      "Time travel",
-      "Mind reading",
-      "Invisibility",
-      "Super strength",
+      "An epic chase scene",
+      "A mysterious murder",
+      "A meet-cute moment",
+      "Mind-bending visuals",
       "Surprise me!"
     ]
   },
   {
-    id: 5,
+    id: 2,
     category: 'genre',
-    question: "Your go-to spotify playlist is mostly...",
+    question: "Pick the movie villain you'd most want to watch:",
     options: [
-      "Epic orchestral scores",
-      "Indie acoustic vibes",
-      "High-energy beats",
-      "Emotional ballads",
-      "A mix of everything"
+      "Brilliant mastermind",
+      "Sympathetic anti-hero",
+      "Supernatural entity",
+      "Complex moral opponent",
+      "Any compelling antagonist"
+    ]
+  },
+  {
+    id: 3,
+    category: 'genre',
+    question: "What should the movie focus on most?",
+    options: [
+      "Heart-pounding action",
+      "Mind-bending mystery",
+      "Emotional journey",
+      "Comedy and fun",
+      "Mix of everything"
+    ]
+  },
+  // Film Elements
+  {
+    id: 4,
+    category: 'film_elements',
+    question: "Pick your ideal movie setting:",
+    options: [
+      "Neon-lit cyberpunk city",
+      "Magical fantasy realm",
+      "Gritty urban streets",
+      "Distant alien worlds",
+      "Any immersive world"
+    ]
+  },
+  {
+    id: 5,
+    category: 'film_elements',
+    question: "What should stand out most in the movie?",
+    options: [
+      "Epic orchestral score",
+      "Stunning visuals",
+      "Sharp witty dialogue",
+      "Deep emotional moments",
+      "Everything balanced"
     ]
   },
   // Viewing Experience
   {
     id: 6,
     category: 'viewing_experience',
-    question: "How do you eat your popcorn?",
+    question: "How should the story unfold?",
     options: [
-      "One piece at a time",
-      "Handful after handful",
-      "Mix with other snacks",
-      "Save it for intense scenes",
-      "Whatever way feels natural"
+      "Fast-paced thrill ride",
+      "Slow-burn mystery",
+      "Character-driven journey",
+      "Multiple interwoven plots",
+      "Natural progression"
     ]
   },
   {
     id: 7,
     category: 'viewing_experience',
-    question: "Your ideal movie-watching spot is...",
+    question: "What's your ideal movie intensity level?",
     options: [
-      "Premium center seats",
-      "Cozy back row",
-      "Home theater setup",
-      "Outdoor screening",
-      "Anywhere comfortable"
-    ]
-  },
-  {
-    id: 8,
-    category: 'viewing_experience',
-    question: "During a movie, you usually...",
-    options: [
-      "Analyze every detail",
-      "Get lost in the story",
-      "Chat with friends",
-      "Check reviews midway",
-      "Go with the flow"
+      "Keep it light and fun",
+      "Some tension is good",
+      "Edge of your seat",
+      "Mind-blowing intensity",
+      "Whatever serves the story"
     ]
   },
   // Film Elements
   {
-    id: 9,
+    id: 8,
     category: 'film_elements',
-    question: "In a dream, what catches your attention first?",
+    question: "Who should lead this movie?",
     options: [
-      "The vivid colors",
-      "The background music",
-      "The story unfolding",
-      "The emotions felt",
-      "Everything blends together"
+      "Unlikely hero",
+      "Skilled professional",
+      "Complex anti-hero",
+      "Ensemble cast",
+      "Any compelling lead"
     ]
   },
   {
-    id: 10,
+    id: 9,
     category: 'film_elements',
-    question: "Your Instagram feed is full of...",
+    question: "Pick the key relationship in the movie:",
     options: [
-      "Artistic shots",
-      "Funny moments",
-      "Inspiring quotes",
-      "Action shots",
-      "A bit of everything"
+      "Enemies to lovers",
+      "Unlikely partnerships",
+      "Family bonds",
+      "Complex rivalries",
+      "Any authentic connection"
+    ]
+  },
+  // Era
+  {
+    id: 10,
+    category: 'era',
+    question: "When should this movie take place?",
+    options: [
+      "Historical past",
+      "Present day",
+      "Near future",
+      "Far future",
+      "Timeless setting"
     ]
   },
   {
     id: 11,
     category: 'film_elements',
-    question: "At a party, you're most likely to...",
+    question: "Pick the visual style:",
     options: [
-      "Notice the decorations",
-      "Feel the atmosphere",
-      "Follow conversations",
-      "Start the dancing",
-      "Float between activities"
-    ]
-  },
-  // Era
-  {
-    id: 12,
-    category: 'era',
-    question: "Your style icon is from...",
-    options: [
-      "Classic Hollywood",
-      "The rebellious 70s",
-      "The bold 80s/90s",
-      "Contemporary trends",
-      "Mix of all eras"
-    ]
-  },
-  {
-    id: 13,
-    category: 'era',
-    question: "Your dream car would be...",
-    options: [
-      "Classic vintage",
-      "Retro muscle car",
-      "Modern luxury",
-      "Future concept",
-      "Any cool ride"
+      "Realistic and gritty",
+      "Stylized and artistic",
+      "Bright and colorful",
+      "Dark and moody",
+      "Whatever fits the story"
     ]
   },
   // Impact
   {
+    id: 12,
+    category: 'impact',
+    question: "How should this movie affect the viewer?",
+    options: [
+      "Make them think deeply",
+      "Touch their heart",
+      "Pure entertainment",
+      "Leave them speechless",
+      "Any lasting impression"
+    ]
+  },
+  {
+    id: 13,
+    category: 'impact',
+    question: "Pick a must-have scene type:",
+    options: [
+      "Mind-blowing reveal",
+      "Character transformation",
+      "Epic confrontation",
+      "Emotional breakthrough",
+      "Any powerful moment"
+    ]
+  },
+  {
     id: 14,
     category: 'impact',
-    question: "After a good experience, you prefer to...",
+    question: "After the movie ends, viewers should feel:",
     options: [
-      "Analyze it deeply",
-      "Feel the emotions",
-      "Share with friends",
-      "Plan the next one",
-      "Let it sink in naturally"
+      "Amazed and inspired",
+      "Emotionally moved",
+      "Intellectually stimulated",
+      "Thoroughly entertained",
+      "Open to interpretation"
     ]
   },
   {
     id: 15,
-    category: 'impact',
-    question: "A perfect ending makes you feel...",
-    options: [
-      "Mind blown",
-      "Emotionally moved",
-      "Inspired to act",
-      "Ready for more",
-      "Whatever it brings"
-    ]
-  },
-  {
-    id: 16,
     category: 'viewing_experience',
-    question: "Your reaction to plot twists is...",
+    question: "Choose the perfect viewing setup:",
     options: [
-      "Gasp out loud",
-      "Silent shock",
-      "Predict them early",
-      "Rewind to check clues",
-      "Take them as they come"
-    ]
-  },
-  {
-    id: 17,
-    category: 'film_elements',
-    question: "Pick a time of day:",
-    options: [
-      "Golden sunset",
-      "Mysterious midnight",
-      "Fresh dawn",
-      "Busy noon",
-      "Any time works"
-    ]
-  },
-  {
-    id: 18,
-    category: 'genre',
-    question: "Your ideal pet would be...",
-    options: [
-      "Magical creature",
-      "Loyal companion",
-      "Exotic species",
-      "Smart helper",
-      "Any loving animal"
-    ]
-  },
-  {
-    id: 19,
-    category: 'impact',
-    question: "After watching something impactful, you...",
-    options: [
-      "Research the topic",
-      "Reflect quietly",
-      "Discuss with others",
-      "Change something in life",
-      "Let it influence naturally"
-    ]
-  },
-  {
-    id: 20,
-    category: 'viewing_experience',
-    question: "During intense scenes, you...",
-    options: [
-      "Hold your breath",
-      "Cover your eyes",
-      "Grip your seat",
-      "Watch intently",
-      "React spontaneously"
-    ]
-  },
-  {
-    id: 21,
-    category: 'era',
-    question: "Your ideal vacation setting is...",
-    options: [
-      "Historic landmarks",
-      "Retro-themed resort",
-      "Modern city",
-      "Futuristic attraction",
-      "Wherever adventure leads"
+      "Epic IMAX experience",
+      "Cozy home theater",
+      "Late night silence",
+      "Social watch party",
+      "Any comfortable setting"
     ]
   }
 ];

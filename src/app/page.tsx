@@ -14,7 +14,6 @@ export default function Home() {
   const [error, setError] = useState<string>();
   const [userAnswers, setUserAnswers] = useState<Array<{ question: Question; answer: string }>>([]);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
-  const [batchSize] = useState(10);
 
   const handleQuestionComplete = async (answers: Array<{ question: Question; answer: string }>) => {
     setIsLoading(true);
@@ -31,8 +30,7 @@ export default function Home() {
         body: JSON.stringify({ 
           answers,
           model: config.defaultModel,
-          language: selectedLanguage,
-          batchSize
+          language: selectedLanguage 
         }),
       });
 
@@ -80,39 +78,6 @@ export default function Home() {
     }
   };
 
-  const handleLoadMore = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/recommendations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          answers: userAnswers,
-          model: config.defaultModel,
-          language: selectedLanguage,
-          batchSize: 5
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch more recommendations');
-      }
-
-      const data = await response.json();
-      if (!data.recommendations || !Array.isArray(data.recommendations)) {
-        throw new Error('Invalid recommendations format received');
-      }
-
-      setMovies(prevMovies => [...prevMovies, ...data.recommendations]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load more recommendations');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <main className="container mx-auto px-4 py-8">
       {showQuestions ? (
@@ -136,7 +101,6 @@ export default function Home() {
           isLoading={isLoading} 
           error={error}
           onMovieWatched={handleMovieWatched}
-          onLoadMore={handleLoadMore}
           onReset={() => {
             setShowQuestions(true);
             setMovies([]);
