@@ -5,7 +5,8 @@ import { config } from '../../../config/env';
 
 export async function POST(request: Request) {
   try {
-    const { answers, model = 'groq' } = await request.json();
+    const { answers, model = 'groq', language = 'English' } = await request.json();
+    console.log('Received request:', { answers, model, language });
     
     if (!answers || !Array.isArray(answers) || answers.length < 1) {
       console.error('Invalid answers format received:', answers);
@@ -15,14 +16,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find language preference from the answers, now using the full answer object structure
-    const languageAnswer = answers.find(a => a.question?.id === 0);
-    const languagePreference = languageAnswer?.answer || 'English';
-
     // First prompt: Analyze answers to create a viewer profile
     const analysisPrompt = `As a cinema psychologist, analyze these viewer responses to create a detailed viewer profile:
 
-Preferred Movie Language: ${languagePreference}
+Preferred Movie Language: ${language}
 
 ${answers.map(a => `Question: ${a.question.question}
 Category: ${a.question.category}
@@ -30,7 +27,7 @@ Answer: ${a.answer}
 `).join('\n')}
 
 Create a concise but insightful profile of this viewer's movie preferences, considering:
-1. Their preferred language for movies (${languagePreference})
+1. Their preferred language for movies (${language})
 2. Their likely genre preferences
 3. Their viewing style and atmosphere preferences
 4. What film elements they value most
@@ -102,6 +99,7 @@ Create a concise but insightful profile of this viewer's movie preferences, cons
     }
 
     if (!viewerProfile) {
+      console.error('Failed to generate viewer profile');
       return NextResponse.json(
         { error: 'Failed to generate viewer profile' },
         { status: 500 }
@@ -113,16 +111,16 @@ Create a concise but insightful profile of this viewer's movie preferences, cons
 
 ${viewerProfile}
 
-IMPORTANT: Prioritize movies in ${languagePreference} language when available and suitable for the viewer's preferences. For non-${languagePreference} movies, note if they are subtitled or dubbed.
+IMPORTANT: Prioritize movies in ${language} language when available and suitable for the viewer's preferences. For non-${language} movies, note if they are subtitled or dubbed.
 
 Please provide exactly 10 recommendations in this specific format:
 
 1. Title: [Movie Name] (Year)
-Description: [One paragraph description including language/subtitle information if not in ${languagePreference}]
+Description: [One paragraph description including language/subtitle information if not in ${language}]
 Match Score: [60-100]
 
 2. Title: [Movie Name] (Year)
-Description: [One paragraph description including language/subtitle information if not in ${languagePreference}]
+Description: [One paragraph description including language/subtitle information if not in ${language}]
 Match Score: [60-100]
 
 [...continue for all 10 movies...]
@@ -179,6 +177,7 @@ Make each recommendation thoughtful and personally tailored to the viewer's prof
     }
     
     if (!response) {
+      console.error('No response from AI');
       return NextResponse.json(
         { error: 'No response from AI' },
         { status: 500 }
@@ -186,12 +185,23 @@ Make each recommendation thoughtful and personally tailored to the viewer's prof
     }
     
     const movies = parseAIResponse(response);
-    console.log('Parsed movies:', movies);
+    console.log('Generated recommendations:', movies);
     
-    return NextResponse.json({ 
+    if (!movies || movies.length === 0) {
+      console.error('No movies were parsed from the AI response');
+      return NextResponse.json(
+        { error: 'Failed to parse movie recommendations' },
+        { status: 500 }
+      );
+    }
+
+    const responseData = { 
       recommendations: movies,
-      viewerProfile // Include the viewer profile in the response
-    });
+      viewerProfile 
+    };
+    console.log('Sending response:', responseData);
+    
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error in recommendation route:', error);
     return NextResponse.json(

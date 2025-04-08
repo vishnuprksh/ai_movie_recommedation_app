@@ -2,44 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Question, QuestionFlowProps } from '../types';
 
 const allQuestions: Question[] = [
-  // Language Selection for Movies
-  {
-    id: 0,
-    category: 'language',
-    question: "What languages do you prefer for movies?",
-    options: [
-      "English",
-      "Malayalam",
-      "Hindi",
-      "Tamil",
-      "Korean"
-    ]
-  },
-  // Language & Subtitles
-  {
-    id: 1,
-    category: 'language',
-    question: "When you're at a foreign restaurant, what's your approach to the menu?",
-    options: [
-      "I stick to dishes I can pronounce",
-      "I love trying authentic names",
-      "I ask for translations",
-      "Pictures are my guide",
-      "I'm open to pointing and surprises"
-    ]
-  },
-  {
-    id: 2,
-    category: 'language',
-    question: "Your friend is telling a story in another language. You...",
-    options: [
-      "Focus on their expressions and gestures",
-      "Try to catch familiar words",
-      "Wait for someone to translate",
-      "Get lost in the rhythm",
-      "Embrace the mystery"
-    ]
-  },
   // Genre
   {
     id: 3,
@@ -201,7 +163,6 @@ const allQuestions: Question[] = [
       "Whatever it brings"
     ]
   },
-  // More varied questions
   {
     id: 16,
     category: 'viewing_experience',
@@ -273,54 +234,6 @@ const allQuestions: Question[] = [
       "Futuristic attraction",
       "Wherever adventure leads"
     ]
-  },
-  {
-    id: 22,
-    category: 'film_elements',
-    question: "In a story, you're drawn to...",
-    options: [
-      "Visual details",
-      "Character relationships",
-      "Plot complexity",
-      "Action sequences",
-      "The overall experience"
-    ]
-  },
-  {
-    id: 23,
-    category: 'language',
-    question: "When hearing a new song in another language...",
-    options: [
-      "Focus on the melody",
-      "Try to learn lyrics",
-      "Look up translation",
-      "Feel the emotion",
-      "Enjoy the whole package"
-    ]
-  },
-  {
-    id: 24,
-    category: 'genre',
-    question: "Your dream house would be in...",
-    options: [
-      "Mysterious old mansion",
-      "High-tech smart home",
-      "Cozy cottage",
-      "Urban penthouse",
-      "Any place that feels right"
-    ]
-  },
-  {
-    id: 25,
-    category: 'impact',
-    question: "The best stories make you...",
-    options: [
-      "Question everything",
-      "Feel deeply",
-      "Learn something new",
-      "Want to take action",
-      "Experience life differently"
-    ]
   }
 ];
 
@@ -331,7 +244,6 @@ export default function QuestionFlow({ onComplete, minQuestions = 5 }: QuestionF
   const [canSkip, setCanSkip] = useState(false);
 
   useEffect(() => {
-    // Shuffle questions using Fisher-Yates algorithm
     const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
     setQuestions(shuffled);
   }, []);
@@ -341,12 +253,11 @@ export default function QuestionFlow({ onComplete, minQuestions = 5 }: QuestionF
     setAnswers(newAnswers);
     setCurrentQuestion(currentQuestion + 1);
     
-    // Enable skip button after minimum questions answered
-    if (newAnswers.length >= minQuestions) {
+    // Show skip button after first question
+    if (newAnswers.length >= 1) {
       setCanSkip(true);
     }
 
-    // Complete if all questions answered or user chooses to finish after minimum
     if (currentQuestion >= questions.length - 1 || (canSkip && answer === 'SKIP')) {
       onComplete(newAnswers);
     }
@@ -361,21 +272,43 @@ export default function QuestionFlow({ onComplete, minQuestions = 5 }: QuestionF
   if (!questions.length || currentQuestion >= questions.length) return null;
 
   const progress = (currentQuestion / questions.length) * 100;
+  
+  const getProgressBarStyles = () => {
+    if (progress < 25) {
+      return 'bg-red-500 shadow-red-500/50';
+    } else if (progress < 50) {
+      return 'bg-yellow-500 shadow-yellow-500/50';
+    } else if (progress < 75) {
+      return 'bg-blue-500 shadow-blue-500/50';
+    } else {
+      return 'bg-green-500 shadow-green-500/50';
+    }
+  };
+
+  const getRecommendationStrength = () => {
+    if (progress < 25) {
+      return 'Basic';
+    } else if (progress < 50) {
+      return 'Good';
+    } else if (progress < 75) {
+      return 'Strong';
+    } else {
+      return 'Excellent';
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-8">
       <div className="mb-6">
         <div className="flex justify-between mb-3">
           <span className="text-sm font-medium text-blue-400">
-            Question {currentQuestion + 1}/{questions.length}
-          </span>
-          <span className="text-sm font-medium text-blue-400">
-            {Math.round(progress)}% Complete
+            {getRecommendationStrength()} Recommendations
           </span>
         </div>
+
         <div className="w-full bg-gray-700/50 rounded-full h-3 backdrop-blur-sm">
           <div 
-            className="bg-blue-500 h-3 rounded-full transition-all duration-500 ease-in-out shadow-lg shadow-blue-500/50"
+            className={`h-3 rounded-full transition-all duration-500 ease-in-out shadow-lg ${getProgressBarStyles()}`}
             style={{ width: `${progress}%` }}
           ></div>
         </div>
@@ -387,10 +320,9 @@ export default function QuestionFlow({ onComplete, minQuestions = 5 }: QuestionF
                      bg-gradient-to-r from-blue-600 to-blue-400 
                      hover:from-blue-500 hover:to-blue-300
                      rounded-xl transition-all duration-300 transform hover:scale-[1.02]
-                     shadow-lg hover:shadow-blue-500/30
-                     animate-pulse hover:animate-none"
+                     shadow-lg hover:shadow-blue-500/30"
           >
-            Enough questions, Give me recommendations!!
+            Get recommendations
           </button>
         )}
       </div>

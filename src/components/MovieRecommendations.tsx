@@ -2,20 +2,26 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Movie, MovieRecommendationsProps } from '../types';
 
 export default function MovieRecommendations({ 
-  movies, 
+  movies = [], 
   isLoading, 
   error,
   onMovieWatched,
   viewerProfile
 }: MovieRecommendationsProps & { viewerProfile?: string }) {
-  const [remainingMovies, setRemainingMovies] = useState<Movie[]>(movies);
-  const [currentMovie, setCurrentMovie] = useState<Movie | null>(movies[0] || null);
+  const [remainingMovies, setRemainingMovies] = useState<Movie[]>([]);
+  const [currentMovie, setCurrentMovie] = useState<Movie | null>(null);
 
-  // Update state when movies prop changes
+  // Update state when movies prop changes, with proper dependency check
   useEffect(() => {
-    setRemainingMovies(movies);
-    setCurrentMovie(movies[0] || null);
-  }, [movies]);
+    // Only update if the movies array has actually changed
+    if (movies.length > 0) {
+      setRemainingMovies(movies);
+      setCurrentMovie(movies[0]);
+    } else {
+      setRemainingMovies([]);
+      setCurrentMovie(null);
+    }
+  }, [JSON.stringify(movies)]); // Using JSON.stringify to properly detect array changes
 
   const handleMovieWatched = useCallback(async (movieTitle: string) => {
     if (onMovieWatched) {

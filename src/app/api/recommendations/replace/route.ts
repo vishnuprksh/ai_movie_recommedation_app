@@ -11,34 +11,30 @@ try {
 
 export async function POST(request: Request) {
   try {
-    const { answers, watchedMovie, model = 'groq' } = await request.json();
+    const { answers, watchedMovie, model = 'groq', language = 'English' } = await request.json();
     
-    if (!answers || !Array.isArray(answers) || answers.length !== 5 || !watchedMovie) {
+    if (!answers || !Array.isArray(answers) || !watchedMovie) {
       return NextResponse.json(
         { error: 'Invalid request format' },
         { status: 400 }
       );
     }
 
-    // Find language preference from the answers
-    const languagePreference = answers.find(a => a.question.id === 0)?.answer || 'English';
-
     const prompt = `As a cinematic AI curator, analyze these viewer preferences and recommend 1 perfect movie to replace "${watchedMovie}" that they've already watched:
 
-Preferred Movie Language: ${languagePreference}
+Preferred Movie Language: ${language}
 
-1. Character Preference: ${answers[0]}
-2. Viewing Atmosphere: ${answers[1]}
-3. Key Film Element: ${answers[2]}
-4. Preferred Era: ${answers[3]}
-5. Desired Impact: ${answers[4]}
+${answers.map(a => `Question: ${a.question.question}
+Category: ${a.question.category}
+Answer: ${a.answer}
+`).join('\n')}
 
-IMPORTANT: Prioritize movies in ${languagePreference} language when available and suitable for the viewer's preferences. For non-${languagePreference} movies, note if they are subtitled or dubbed.
+IMPORTANT: Prioritize movies in ${language} language when available and suitable for the viewer's preferences. For non-${language} movies, note if they are subtitled or dubbed.
 
 Provide exactly 1 recommendation using EXACTLY this format (including the numbering and labels):
 
 1. Movie Title: [movie name]
-Description: [one compelling reason why this movie perfectly matches their preferences, including language/subtitle information if not in ${languagePreference}]
+Description: [one compelling reason why this movie perfectly matches their preferences, including language/subtitle information if not in ${language}]
 Match Score: [number between 85-100]
 
 Important: 
@@ -76,7 +72,6 @@ Important:
 
       response = result.response.text();
     } else {
-      // Default to Groq
       if (!process.env.GROQ_API_KEY) {
         return NextResponse.json(
           { error: 'Groq API key not configured' },
@@ -118,7 +113,8 @@ Important:
     }
 
     const parsedMovies = parseAIResponse(response);
-    
+    console.log('Parsed response:', parsedMovies);
+
     if (parsedMovies.length === 0) {
       return NextResponse.json(
         { error: 'Failed to parse AI response' },
@@ -134,13 +130,7 @@ Important:
       );
     }
 
-    return NextResponse.json({ 
-      movie: {
-        title: movie.title,
-        description: movie.description,
-        matchScore: movie.matchScore
-      } 
-    });
+    return NextResponse.json({ movie });
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(
@@ -173,66 +163,52 @@ function parseAIResponse(response: string): Array<{
     
     console.log('Processing lines:', lines);
 
-    // Find the title line - try multiple formats
+    // Find title line
     const titleLine = lines.find(line => 
-      /^(\d+\.|Movie Title:|Title:)/i.test(line) || 
-      line.includes(':**')
+      line.toLowerCase().includes('title:') || 
+      /^\d+\./.test(line)
     );
 
-    if (!titleLine) {
-      console.error('No title line found in block');
-      continue;
+    let title = '';
+    if (titleLine) {
+      title = titleLine
+        .replace(/^\d+\.\s*/, '') // Remove numbering
+        .replace(/^.*?title:\s*/i, '') // Remove "Movie Title:" or similar
+        .trim();
     }
 
-    // Extract and clean title
-    let title = titleLine
-      .replace(/^\d+\.\s*/, '') // Remove number prefix
-      .replace(/^(Movie )?Title:\s*/i, '') // Remove "Title:" or "Movie Title:" prefix
-      .replace(/\*\*/g, '') // Remove markdown
-      .trim();
-
-    // Handle year in parentheses
-    const yearMatch = title.match(/\((\d{4})\)/);
-    const year = yearMatch ? yearMatch[0] : '';
-    title = title.replace(/\((\d{4})\)/, '').trim();
-    if (year) {
-      title = `${title} ${year}`;
-    }
-
-    // Find description - try multiple formats
+    // Find description
+    const descriptionLine = lines.find(line => 
+      line.toLowerCase().startsWith('description:')
+    );
     let description = '';
-    const descLine = lines.find(line => /^Description:/i.test(line));
-    if (descLine) {
-      description = descLine.replace(/^Description:\s*/i, '').trim();
-    } else {
-      // If no Description: prefix, use the longest line that's not title or score
-      const contentLines = lines.filter(line => 
-        line !== titleLine && 
-        !line.toLowerCase().includes('score:')
-      );
-      description = contentLines.reduce((a, b) => a.length > b.length ? a : b, '').trim();
+    if (descriptionLine) {
+      description = descriptionLine
+        .replace(/^description:\s*/i, '')
+        .trim();
     }
 
-    // Find match score - try multiple formats
+    // Find match score
+    const scoreLine = lines.find(line => 
+      line.toLowerCase().includes('match score:')
+    );
     let matchScore = 85; // Default score
-    const scoreLine = lines.find(line => /match.*score|score.*match/i.test(line));
     if (scoreLine) {
-      const scoreMatch = scoreLine.match(/\d+/);
-      if (scoreMatch) {
-        const parsed = parseInt(scoreMatch[0]);
-        if (!isNaN(parsed) && parsed >= 60 && parsed <= 100) {
-          matchScore = parsed;
+      const match = scoreLine.match(/\d+/);
+      if (match) {
+        const score = parseInt(match[0], 10);
+        if (!isNaN(score) && score >= 0 && score <= 100) {
+          matchScore = score;
         }
       }
     }
 
-    // Only add if we have both title and description
     if (title && description) {
-      const movie = { title, description, matchScore };
-      console.log('Parsed movie:', movie);
-      movies.push(movie);
-    } else {
-      console.error('Failed to parse movie - missing title or description');
+      movies.push({
+        title,
+        description,
+        matchScore
+      });
     }
   }
 
