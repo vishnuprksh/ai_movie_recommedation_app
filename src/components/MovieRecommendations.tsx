@@ -111,7 +111,7 @@ export default function MovieRecommendations({
           <p className="text-white/70 leading-relaxed mb-6 text-lg">
             {currentMovie.description}
           </p>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div className="flex justify-center">
             <button
               onClick={() => handleMovieWatched(currentMovie.title)}
               disabled={isWatchedLoading}
@@ -130,9 +130,6 @@ export default function MovieRecommendations({
                 "I've watched this"
               )}
             </button>
-            <span className="text-sm text-gray-400">
-              {remainingMovies.length - 1} more recommendations in queue
-            </span>
           </div>
         </div>
       </div>
