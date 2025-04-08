@@ -15,8 +15,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find language preference from the answers
-    const languagePreference = answers.find(a => a.question.id === 0)?.answer || 'English';
+    // Find language preference from the answers, now using the full answer object structure
+    const languageAnswer = answers.find(a => a.question?.id === 0);
+    const languagePreference = languageAnswer?.answer || 'English';
 
     // First prompt: Analyze answers to create a viewer profile
     const analysisPrompt = `As a cinema psychologist, analyze these viewer responses to create a detailed viewer profile:

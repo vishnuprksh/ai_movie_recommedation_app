@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import QuestionFlow from '../components/QuestionFlow';
 import MovieRecommendations from '../components/MovieRecommendations';
 import ModelSelector from '../components/ModelSelector';
-import { Movie } from '../types';
+import { Movie, Question } from '../types';
 import { config } from '../config/env';
 
 export default function Home() {
@@ -12,13 +12,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [error, setError] = useState<string>();
-  const [userAnswers, setUserAnswers] = useState<string[]>([]);
+  const [userAnswers, setUserAnswers] = useState<Array<{ question: Question; answer: string }>>([]);
   const [selectedModel, setSelectedModel] = useState<'groq' | 'gemini'>(config.defaultModel);
 
-  const handleQuestionComplete = async (answers: string[]) => {
+  const handleQuestionComplete = async (answers: Array<{ question: Question; answer: string }>) => {
     setIsLoading(true);
     setShowQuestions(false);
     setError(undefined);
+    
+    // Store the full answer objects
     setUserAnswers(answers);
 
     try {
