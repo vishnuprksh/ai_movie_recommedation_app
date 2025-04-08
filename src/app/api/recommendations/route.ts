@@ -5,8 +5,8 @@ import { config } from '../../../config/env';
 
 export async function POST(request: Request) {
   try {
-    const { answers, model = 'groq', language = 'English' } = await request.json();
-    console.log('Received request:', { answers, model, language });
+    const { answers, model = 'groq', language = 'English', batchSize = 10 } = await request.json();
+    console.log('Received request:', { answers, model, language, batchSize });
     
     if (!answers || !Array.isArray(answers) || answers.length < 1) {
       console.error('Invalid answers format received:', answers);
@@ -64,7 +64,6 @@ Create a concise but insightful profile of this viewer's movie preferences, cons
 
       viewerProfile = result.response.text();
     } else {
-      // Default to Groq
       if (!process.env.GROQ_API_KEY) {
         return NextResponse.json(
           { error: 'Groq API key not configured' },
@@ -107,23 +106,19 @@ Create a concise but insightful profile of this viewer's movie preferences, cons
     }
 
     // Second prompt: Use viewer profile to generate recommendations
-    const recommendationPrompt = `As a cinematic AI curator, use this viewer profile to recommend 10 perfect movies.
+    const recommendationPrompt = `As a cinematic AI curator, use this viewer profile to recommend ${batchSize} perfect movies.
 
 ${viewerProfile}
 
 IMPORTANT: Prioritize movies in ${language} language when available and suitable for the viewer's preferences. For non-${language} movies, note if they are subtitled or dubbed.
 
-Please provide exactly 10 recommendations in this specific format:
+Please provide exactly ${batchSize} recommendations in this specific format:
 
 1. Title: [Movie Name] (Year)
 Description: [One paragraph description including language/subtitle information if not in ${language}]
 Match Score: [60-100]
 
-2. Title: [Movie Name] (Year)
-Description: [One paragraph description including language/subtitle information if not in ${language}]
-Match Score: [60-100]
-
-[...continue for all 10 movies...]
+[...continue for all ${batchSize} movies...]
 
 Make each recommendation thoughtful and personally tailored to the viewer's profile, ensuring a good mix of their preferred language and other highly-rated international films when appropriate.`;
 
@@ -183,7 +178,7 @@ Make each recommendation thoughtful and personally tailored to the viewer's prof
         { status: 500 }
       );
     }
-    
+
     const movies = parseAIResponse(response);
     console.log('Generated recommendations:', movies);
     

@@ -7,18 +7,14 @@ interface LanguageSelectorProps {
 }
 
 const languages = [
+  "Any",
   "English",
-  "Spanish",
-  "French",
-  "German",
-  "Italian",
-  "Japanese",
-  "Korean",
-  "Chinese",
   "Hindi",
-  "Arabic",
-  "Portuguese",
-  "Russian"
+  "Tamil",
+  "Malayalam",
+  "Korean",
+  "Telugu",
+  "Kannada"
 ];
 
 export default function LanguageSelector({ 

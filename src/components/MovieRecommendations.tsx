@@ -6,14 +6,15 @@ export default function MovieRecommendations({
   isLoading, 
   error,
   onMovieWatched,
+  onLoadMore,
   viewerProfile
 }: MovieRecommendationsProps & { viewerProfile?: string }) {
   const [remainingMovies, setRemainingMovies] = useState<Movie[]>([]);
   const [currentMovie, setCurrentMovie] = useState<Movie | null>(null);
+  const [isWatchedLoading, setIsWatchedLoading] = useState(false);
+  const [watchedCount, setWatchedCount] = useState(0);
 
-  // Update state when movies prop changes, with proper dependency check
   useEffect(() => {
-    // Only update if the movies array has actually changed
     if (movies.length > 0) {
       setRemainingMovies(movies);
       setCurrentMovie(movies[0]);
@@ -21,30 +22,51 @@ export default function MovieRecommendations({
       setRemainingMovies([]);
       setCurrentMovie(null);
     }
-  }, [JSON.stringify(movies)]); // Using JSON.stringify to properly detect array changes
+  }, [JSON.stringify(movies)]);
 
   const handleMovieWatched = useCallback(async (movieTitle: string) => {
-    if (onMovieWatched) {
-      const replacementMovie = await onMovieWatched(movieTitle);
-      
-      // Remove the current movie from the queue
+    if (!onMovieWatched) return;
+    
+    setIsWatchedLoading(true);
+    try {
+      // First, update the UI to show the next movie immediately
       const nextMovies = remainingMovies.slice(1);
-      
       if (nextMovies.length > 0) {
-        // Show the next movie in queue
         setCurrentMovie(nextMovies[0]);
         setRemainingMovies(nextMovies);
-      } else if (replacementMovie) {
-        // If we got a replacement movie and queue is empty, show it
+      }
+
+      // Increment watched count and check if we need to load more
+      const newWatchedCount = watchedCount + 1;
+      setWatchedCount(newWatchedCount);
+      
+      if (newWatchedCount % 5 === 0 && onLoadMore) {
+        await onLoadMore();
+      }
+
+      // Then, get the replacement movie in the background
+      const replacementMovie = await onMovieWatched(movieTitle);
+      
+      if (replacementMovie) {
+        // Add the replacement movie to the end of the queue
+        setRemainingMovies(prev => [...prev, replacementMovie]);
+      }
+
+      // If we had no next movies but got a replacement, show it
+      if (nextMovies.length === 0 && replacementMovie) {
         setCurrentMovie(replacementMovie);
         setRemainingMovies([replacementMovie]);
-      } else {
-        // No more movies in queue and no replacement
+      } else if (nextMovies.length === 0) {
+        // If we had no next movies and got no replacement
         setCurrentMovie(null);
         setRemainingMovies([]);
       }
+    } catch (error) {
+      console.error('Error marking movie as watched:', error);
+    } finally {
+      setIsWatchedLoading(false);
     }
-  }, [remainingMovies, onMovieWatched]);
+  }, [remainingMovies, onMovieWatched, watchedCount, onLoadMore]);
 
   if (isLoading) {
     return (
@@ -56,7 +78,7 @@ export default function MovieRecommendations({
 
   if (error) {
     return (
-      <div className="text-red-500 text-center p-4">
+      <div className="text-red-500 text-center p-4 bg-red-500/10 rounded-xl border border-red-500/20">
         {error}
       </div>
     );
@@ -64,8 +86,9 @@ export default function MovieRecommendations({
 
   if (!currentMovie) {
     return (
-      <div className="text-gray-400 text-center p-4">
-        No more recommendations available. Try answering the questions again for new suggestions!
+      <div className="text-gray-400 text-center p-8 bg-gray-800/50 rounded-xl border border-gray-700">
+        <h3 className="text-xl font-semibold text-blue-400 mb-3">All Caught Up!</h3>
+        <p>No more recommendations available. Try answering the questions again for new suggestions!</p>
       </div>
     );
   }
@@ -73,37 +96,51 @@ export default function MovieRecommendations({
   return (
     <div className="space-y-8">
       {viewerProfile && (
-        <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700 mb-8">
+        <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700 mb-8 transform transition-all duration-300 hover:scale-[1.02]">
           <h3 className="text-xl font-semibold text-blue-400 mb-3">Your Movie Personality</h3>
-          <p className="text-white/90 leading-relaxed">{viewerProfile}</p>
+          <p className="text-white/90 leading-relaxed whitespace-pre-line">{viewerProfile}</p>
         </div>
       )}
       
       <div className="grid gap-6">
         <div 
           key={currentMovie.title}
-          className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700
-                   transition-all duration-300 hover:border-blue-500/50 group"
+          className="bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl border border-gray-700
+                   transform transition-all duration-300 hover:scale-[1.02] hover:border-blue-500/50 group"
         >
-          <div className="flex justify-between items-start mb-3">
-            <h3 className="text-xl font-semibold text-white/90 group-hover:text-blue-400 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+            <h3 className="text-2xl font-semibold text-white/90 group-hover:text-blue-400 transition-colors">
               {currentMovie.title}
             </h3>
-            <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-sm rounded-full">
-              {currentMovie.matchScore}% Match
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-4 py-2 bg-blue-500/20 text-blue-400 text-sm rounded-full font-medium">
+                {currentMovie.matchScore}% Match
+              </span>
+            </div>
           </div>
-          <p className="text-white/70 leading-relaxed mb-4">
+          <p className="text-white/70 leading-relaxed mb-6 text-lg">
             {currentMovie.description}
           </p>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <button
               onClick={() => handleMovieWatched(currentMovie.title)}
-              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              disabled={isWatchedLoading}
+              className={`px-6 py-3 rounded-lg font-medium transition-all duration-300
+                ${isWatchedLoading 
+                  ? 'bg-gray-700/50 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 hover:scale-105'
+                }`}
             >
-              I've watched this
+              {isWatchedLoading ? (
+                <span className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-400"></div>
+                  Updating...
+                </span>
+              ) : (
+                "I've watched this"
+              )}
             </button>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-400">
               {remainingMovies.length - 1} more recommendations in queue
             </span>
           </div>

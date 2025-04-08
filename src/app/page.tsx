@@ -14,6 +14,7 @@ export default function Home() {
   const [error, setError] = useState<string>();
   const [userAnswers, setUserAnswers] = useState<Array<{ question: Question; answer: string }>>([]);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [batchSize] = useState(10);
 
   const handleQuestionComplete = async (answers: Array<{ question: Question; answer: string }>) => {
     setIsLoading(true);
@@ -30,7 +31,8 @@ export default function Home() {
         body: JSON.stringify({ 
           answers,
           model: config.defaultModel,
-          language: selectedLanguage 
+          language: selectedLanguage,
+          batchSize
         }),
       });
 
@@ -45,6 +47,67 @@ export default function Home() {
       setMovies(data.recommendations);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMovieWatched = async (movieTitle: string): Promise<Movie | undefined> => {
+    try {
+      const response = await fetch('/api/recommendations/replace', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          answers: userAnswers,
+          watchedMovie: movieTitle,
+          model: config.defaultModel,
+          language: selectedLanguage
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get replacement movie');
+      }
+
+      const data = await response.json();
+      return data.movie;
+    } catch (error) {
+      console.error('Error getting replacement movie:', error);
+      setError('Failed to get a replacement movie recommendation');
+      return undefined;
+    }
+  };
+
+  const handleLoadMore = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          answers: userAnswers,
+          model: config.defaultModel,
+          language: selectedLanguage,
+          batchSize: 5
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch more recommendations');
+      }
+
+      const data = await response.json();
+      if (!data.recommendations || !Array.isArray(data.recommendations)) {
+        throw new Error('Invalid recommendations format received');
+      }
+
+      setMovies(prevMovies => [...prevMovies, ...data.recommendations]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load more recommendations');
     } finally {
       setIsLoading(false);
     }
@@ -72,6 +135,8 @@ export default function Home() {
           movies={movies} 
           isLoading={isLoading} 
           error={error}
+          onMovieWatched={handleMovieWatched}
+          onLoadMore={handleLoadMore}
           onReset={() => {
             setShowQuestions(true);
             setMovies([]);
