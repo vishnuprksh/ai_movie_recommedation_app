@@ -1,16 +1,17 @@
 import './test-setup';
 import { POST } from '../recommendations/route';
 
-// Mock OpenAI with a class constructor
-jest.mock('openai', () => {
-  return jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: jest.fn().mockResolvedValue({
-          choices: [
-            {
-              message: {
-                content: `1. Inception
+// Mock Groq with a class constructor
+jest.mock('groq-sdk', () => {
+  return {
+    Groq: jest.fn().mockImplementation(() => ({
+      chat: {
+        completions: {
+          create: jest.fn().mockResolvedValue({
+            choices: [
+              {
+                message: {
+                  content: `1. Inception
 Description: A mind-bending sci-fi masterpiece about dreams.
 Match Score: 95
 
@@ -21,13 +22,14 @@ Match Score: 90
 3. Interstellar
 Description: Epic space adventure with emotional depth.
 Match Score: 85`
+                }
               }
-            }
-          ]
-        })
+            ]
+          })
+        }
       }
-    }
-  }));
+    }))
+  };
 });
 
 describe('Recommendations API', () => {
@@ -35,7 +37,7 @@ describe('Recommendations API', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
-    process.env.OPENAI_API_KEY = 'test-key';
+    process.env.GROQ_API_KEY = 'test-key';
   });
 
   afterEach(() => {
@@ -52,8 +54,8 @@ describe('Recommendations API', () => {
     });
   };
 
-  it('returns error when OPENAI_API_KEY is missing', async () => {
-    delete process.env.OPENAI_API_KEY;
+  it('returns error when GROQ_API_KEY is missing', async () => {
+    delete process.env.GROQ_API_KEY;
     
     const request = createRequest({
       answers: ['Sci-Fi', 'Excitement', '2000s', 'Standard', 'Visual Effects']
@@ -62,7 +64,7 @@ describe('Recommendations API', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toBe('OpenAI API key not configured');
+    expect(data.error).toBe('Groq API key not configured');
   });
 
   it('returns error for invalid answers format', async () => {

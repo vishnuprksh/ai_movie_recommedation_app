@@ -4,14 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
-  openai: {
-    apiKey: process.env.OPENAI_API_KEY,
+  groq: {
+    apiKey: process.env.GROQ_API_KEY || '',
   },
 } as const;
 
 // Validate required environment variables
-export function validateConfig() {
-  if (!config.openai.apiKey) {
-    throw new Error('OPENAI_API_KEY environment variable is required');
+export function validateConfig(): void {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY environment variable is required');
   }
 }

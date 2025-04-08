@@ -13,14 +13,12 @@ export default function Home() {
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
 
   const handleQuestionComplete = async (answers: string[]) => {
-    console.log('Submitting answers:', answers);
     setIsLoading(true);
     setShowQuestions(false);
     setError(undefined);
     setUserAnswers(answers);
 
     try {
-      console.log('Sending answers to API:', answers);
       const response = await fetch('/api/recommendations', {
         method: 'POST',
         headers: {
@@ -30,15 +28,24 @@ export default function Home() {
       });
 
       const data = await response.json();
-      console.log('API Response:', data);
       
       if (!response.ok) {
         throw new Error(data.error || 'Failed to get recommendations');
       }
       
-      console.log('Setting movies:', data.recommendations);
-      setMovies(data.recommendations);
-      console.log('Movies set to state:', data.recommendations);
+      if (!data.recommendations || !Array.isArray(data.recommendations)) {
+        throw new Error('Invalid response format');
+      }
+
+      // Validate each movie in the recommendations
+      const validatedMovies = data.recommendations.map(movie => {
+        if (!movie.title || !movie.description || typeof movie.matchScore !== 'number') {
+          throw new Error('Invalid movie data format');
+        }
+        return movie;
+      });
+
+      setMovies(validatedMovies);
     } catch (error) {
       console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'Failed to get recommendations');
@@ -49,6 +56,11 @@ export default function Home() {
   };
 
   const handleMovieWatched = async (movieTitle: string) => {
+    if (!userAnswers || userAnswers.length !== 5) {
+      console.error('Missing user answers for replacement');
+      return undefined;
+    }
+
     try {
       const response = await fetch('/api/recommendations/replace', {
         method: 'POST',
@@ -66,17 +78,23 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to get replacement movie');
       }
+
+      // Validate the replacement movie data
+      const movie = data.movie;
+      if (!movie || !movie.title || !movie.description || typeof movie.matchScore !== 'number') {
+        throw new Error('Invalid replacement movie data');
+      }
       
-      return data.movie;
+      return movie;
     } catch (error) {
-      console.error('Error:', error);
-      return undefined;
+      console.error('Error getting replacement:', error);
+      throw error;
     }
   };
 
   return (
     <main className="min-h-screen py-12 px-4 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto relative">
         {showQuestions ? (
           <div className="space-y-8">
             <h1 className="text-5xl font-bold text-center mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 text-transparent bg-clip-text">

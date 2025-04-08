@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { config, validateConfig } from '../../../../config/env';
+
+try {
+  validateConfig();
+} catch (error) {
+  console.error('Environment configuration error:', error);
+}
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'your-api-key-here',
+  apiKey: config.openai.apiKey,
 });
 
 export async function POST(request: Request) {
@@ -55,17 +62,31 @@ Important: Do NOT recommend "${watchedMovie}" or any extremely similar movies.`;
         { status: 500 }
       );
     }
+
+    const parsedMovies = parseAIResponse(response);
     
-    const movies = parseAIResponse(response);
-    
-    if (movies.length === 0) {
+    if (parsedMovies.length === 0) {
       return NextResponse.json(
         { error: 'Failed to parse AI response' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ movie: movies[0] });
+    const movie = parsedMovies[0];
+    if (!movie.title || !movie.description || typeof movie.matchScore !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid movie data format' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      movie: {
+        title: movie.title,
+        description: movie.description,
+        matchScore: movie.matchScore
+      } 
+    });
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(
@@ -93,11 +114,11 @@ function parseAIResponse(response: string): Array<{
 
     const lines = block.split('\n');
     const titleLine = lines.find(line => /^\d+\./.test(line)) || '';
-    const title = titleLine.replace(/^\d+\.\s*/, '').replace(/"/g, '').trim();
+    const title = titleLine.replace(/^\d+\.\s*/, '').replace(/["*]/g, '').trim();
     
     const descLine = lines.find(line => line.toLowerCase().includes('description:'));
     const description = descLine ? 
-      descLine.replace(/^Description:\s*/i, '').trim() : '';
+      descLine.replace(/^Description:\s*/i, '').replace(/["*]/g, '').trim() : '';
     
     const scoreLine = lines.find(line => line.toLowerCase().includes('match score:'));
     const scoreMatch = scoreLine ? scoreLine.match(/\d+/) : null;

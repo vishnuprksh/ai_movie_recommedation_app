@@ -22,8 +22,9 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "dotenv": "^16.4.7",
+    "groq": "^3.82.0",
+    "groq-sdk": "^0.19.0",
     "next": "latest",
-    "openai": "latest",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest"
