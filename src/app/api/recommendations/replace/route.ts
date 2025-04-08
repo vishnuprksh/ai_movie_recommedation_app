@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { Groq } from 'groq-sdk';
 import { config, validateConfig } from '../../../../config/env';
 
 try {
@@ -8,8 +8,14 @@ try {
   console.error('Environment configuration error:', error);
 }
 
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
+// Check for API key before processing
+if (!process.env.GROQ_API_KEY) {
+  console.error('Groq API key not configured');
+  throw new Error('Groq API key not configured');
+}
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 export async function POST(request: Request) {
@@ -31,15 +37,18 @@ export async function POST(request: Request) {
 4. Preferred Era: ${answers[3]}
 5. Desired Impact: ${answers[4]}
 
-Provide 1 highly personalized recommendation in this format:
-1. Movie Title
-Description: A compelling reason why this movie perfectly matches their preferences
-Match Score: [85-100 based on fit]
+Provide exactly 1 recommendation using EXACTLY this format (including the numbering and labels):
 
-Important: Do NOT recommend "${watchedMovie}" or any extremely similar movies.`;
+1. Movie Title: [movie name]
+Description: [one compelling reason why this movie perfectly matches their preferences]
+Match Score: [number between 85-100]
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+Important: 
+- Do NOT recommend "${watchedMovie}" or any extremely similar movies
+- Follow the format EXACTLY as shown above
+- Include all three elements: numbered title, description, and match score`;
+
+    const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
@@ -50,11 +59,15 @@ Important: Do NOT recommend "${watchedMovie}" or any extremely similar movies.`;
           content: prompt
         }
       ],
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       temperature: 0.7,
       max_tokens: 500,
+      top_p: 1,
+      stream: false,
+      stop: null
     });
 
-    const response = completion.choices[0].message.content;
+    const response = completion.choices[0]?.message?.content;
     
     if (!response) {
       return NextResponse.json(
@@ -101,36 +114,45 @@ function parseAIResponse(response: string): Array<{
   description: string;
   matchScore: number;
 }> {
+  console.log('Raw AI response:', response);
   const movies: Array<{
     title: string;
     description: string;
     matchScore: number;
   }> = [];
   
-  const movieBlocks = response.split('\n\n');
+  // Split into lines and clean them
+  const lines = response.split('\n').map(line => line.trim());
+  console.log('Processing lines:', lines);
 
-  for (const block of movieBlocks) {
-    if (!block.trim()) continue;
+  // Find the title line (should start with number or contain "Movie Title:")
+  const titleLine = lines.find(line => /^(\d+\.|Movie Title:)/i.test(line));
+  if (!titleLine) {
+    console.error('No title line found in response');
+    return [];
+  }
 
-    const lines = block.split('\n');
-    const titleLine = lines.find(line => /^\d+\./.test(line)) || '';
-    const title = titleLine.replace(/^\d+\.\s*/, '').replace(/["*]/g, '').trim();
-    
-    const descLine = lines.find(line => line.toLowerCase().includes('description:'));
-    const description = descLine ? 
-      descLine.replace(/^Description:\s*/i, '').replace(/["*]/g, '').trim() : '';
-    
-    const scoreLine = lines.find(line => line.toLowerCase().includes('match score:'));
-    const scoreMatch = scoreLine ? scoreLine.match(/\d+/) : null;
-    const matchScore = scoreMatch ? parseInt(scoreMatch[0]) : 85;
+  let title = titleLine
+    .replace(/^\d+\.\s*/, '') // Remove number prefix
+    .replace(/^Movie Title:\s*/i, '') // Remove "Movie Title:" prefix
+    .trim();
 
-    if (title && description) {
-      movies.push({
-        title,
-        description,
-        matchScore,
-      });
-    }
+  // Find description (line after "Description:")
+  const descIndex = lines.findIndex(line => /^Description:/i.test(line));
+  const description = descIndex >= 0 ? 
+    lines[descIndex].replace(/^Description:\s*/i, '').trim() : '';
+
+  // Find match score (number after "Match Score:")
+  const scoreLine = lines.find(line => /^Match Score:/i.test(line));
+  const scoreMatch = scoreLine ? scoreLine.match(/\d+/) : null;
+  const matchScore = scoreMatch ? parseInt(scoreMatch[0]) : 85;
+
+  if (title && description) {
+    const movie = { title, description, matchScore };
+    console.log('Parsed movie:', movie);
+    movies.push(movie);
+  } else {
+    console.error('Failed to parse movie - missing title or description');
   }
 
   return movies;
