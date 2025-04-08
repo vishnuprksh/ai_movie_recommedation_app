@@ -15,8 +15,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find language preference from the answers
+    const languagePreference = answers.find(a => a.question.id === 0)?.answer || 'English';
+
     // First prompt: Analyze answers to create a viewer profile
     const analysisPrompt = `As a cinema psychologist, analyze these viewer responses to create a detailed viewer profile:
+
+Preferred Movie Language: ${languagePreference}
 
 ${answers.map(a => `Question: ${a.question.question}
 Category: ${a.question.category}
@@ -24,13 +29,12 @@ Answer: ${a.answer}
 `).join('\n')}
 
 Create a concise but insightful profile of this viewer's movie preferences, considering:
-1. Their likely genre preferences
-2. Their viewing style and atmosphere preferences
-3. What film elements they value most
-4. Their era preferences
-5. What kind of impact they seek from movies
-
-Format the response as a clear, natural paragraph that captures the essence of this viewer's taste in cinema.`;
+1. Their preferred language for movies (${languagePreference})
+2. Their likely genre preferences
+3. Their viewing style and atmosphere preferences
+4. What film elements they value most
+5. Their era preferences
+6. What kind of impact they seek from movies`;
 
     let viewerProfile;
     
@@ -104,23 +108,25 @@ Format the response as a clear, natural paragraph that captures the essence of t
     }
 
     // Second prompt: Use viewer profile to generate recommendations
-    const recommendationPrompt = `As a cinematic AI curator, use this viewer profile to recommend 10 perfect movies:
+    const recommendationPrompt = `As a cinematic AI curator, use this viewer profile to recommend 10 perfect movies.
 
 ${viewerProfile}
+
+IMPORTANT: Prioritize movies in ${languagePreference} language when available and suitable for the viewer's preferences. For non-${languagePreference} movies, note if they are subtitled or dubbed.
 
 Please provide exactly 10 recommendations in this specific format:
 
 1. Title: [Movie Name] (Year)
-Description: [One paragraph description]
+Description: [One paragraph description including language/subtitle information if not in ${languagePreference}]
 Match Score: [60-100]
 
 2. Title: [Movie Name] (Year)
-Description: [One paragraph description]
+Description: [One paragraph description including language/subtitle information if not in ${languagePreference}]
 Match Score: [60-100]
 
 [...continue for all 10 movies...]
 
-Make each recommendation thoughtful and personally tailored to the viewer's profile.`;
+Make each recommendation thoughtful and personally tailored to the viewer's profile, ensuring a good mix of their preferred language and other highly-rated international films when appropriate.`;
 
     let response;
     

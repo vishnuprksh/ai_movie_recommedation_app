@@ -20,7 +20,12 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find language preference from the answers
+    const languagePreference = answers.find(a => a.question.id === 0)?.answer || 'English';
+
     const prompt = `As a cinematic AI curator, analyze these viewer preferences and recommend 1 perfect movie to replace "${watchedMovie}" that they've already watched:
+
+Preferred Movie Language: ${languagePreference}
 
 1. Character Preference: ${answers[0]}
 2. Viewing Atmosphere: ${answers[1]}
@@ -28,10 +33,12 @@ export async function POST(request: Request) {
 4. Preferred Era: ${answers[3]}
 5. Desired Impact: ${answers[4]}
 
+IMPORTANT: Prioritize movies in ${languagePreference} language when available and suitable for the viewer's preferences. For non-${languagePreference} movies, note if they are subtitled or dubbed.
+
 Provide exactly 1 recommendation using EXACTLY this format (including the numbering and labels):
 
 1. Movie Title: [movie name]
-Description: [one compelling reason why this movie perfectly matches their preferences]
+Description: [one compelling reason why this movie perfectly matches their preferences, including language/subtitle information if not in ${languagePreference}]
 Match Score: [number between 85-100]
 
 Important: 
@@ -155,46 +162,78 @@ function parseAIResponse(response: string): Array<{
     matchScore: number;
   }> = [];
   
-  // Split into lines and clean them
-  const lines = response.split('\n').map(line => line.trim());
-  console.log('Processing lines:', lines);
+  // Split into blocks by double newlines to handle potential multiple recommendations
+  const blocks = response.split(/\n{2,}/);
+  console.log('Processing blocks:', blocks);
 
-  // Find the title line (should start with number or contain "Movie Title:")
-  const titleLine = lines.find(line => /^(\d+\.|Movie Title:)/i.test(line));
-  if (!titleLine) {
-    console.error('No title line found in response');
-    return [];
-  }
+  for (const block of blocks) {
+    // Split block into lines and clean them
+    const lines = block.split('\n').map(line => line.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+    
+    console.log('Processing lines:', lines);
 
-  let title = titleLine
-    .replace(/^\d+\.\s*/, '') // Remove number prefix
-    .replace(/^Movie Title:\s*/i, '') // Remove "Movie Title:" prefix
-    .trim();
+    // Find the title line - try multiple formats
+    const titleLine = lines.find(line => 
+      /^(\d+\.|Movie Title:|Title:)/i.test(line) || 
+      line.includes(':**')
+    );
 
-  // Handle year in title if present
-  const yearMatch = title.match(/\((\d{4})\)/);
-  const year = yearMatch ? yearMatch[0] : '';
-  title = title.replace(/\((\d{4})\)/, '').trim();
-  if (year) {
-    title = `${title} ${year}`;
-  }
+    if (!titleLine) {
+      console.error('No title line found in block');
+      continue;
+    }
 
-  // Find description (line after "Description:")
-  const descIndex = lines.findIndex(line => /^Description:/i.test(line));
-  const description = descIndex >= 0 ? 
-    lines[descIndex].replace(/^Description:\s*/i, '').trim() : '';
+    // Extract and clean title
+    let title = titleLine
+      .replace(/^\d+\.\s*/, '') // Remove number prefix
+      .replace(/^(Movie )?Title:\s*/i, '') // Remove "Title:" or "Movie Title:" prefix
+      .replace(/\*\*/g, '') // Remove markdown
+      .trim();
 
-  // Find match score (number after "Match Score:")
-  const scoreLine = lines.find(line => /^Match Score:/i.test(line));
-  const scoreMatch = scoreLine ? scoreLine.match(/\d+/) : null;
-  const matchScore = scoreMatch ? parseInt(scoreMatch[0]) : 85;
+    // Handle year in parentheses
+    const yearMatch = title.match(/\((\d{4})\)/);
+    const year = yearMatch ? yearMatch[0] : '';
+    title = title.replace(/\((\d{4})\)/, '').trim();
+    if (year) {
+      title = `${title} ${year}`;
+    }
 
-  if (title && description) {
-    const movie = { title, description, matchScore };
-    console.log('Parsed movie:', movie);
-    movies.push(movie);
-  } else {
-    console.error('Failed to parse movie - missing title or description');
+    // Find description - try multiple formats
+    let description = '';
+    const descLine = lines.find(line => /^Description:/i.test(line));
+    if (descLine) {
+      description = descLine.replace(/^Description:\s*/i, '').trim();
+    } else {
+      // If no Description: prefix, use the longest line that's not title or score
+      const contentLines = lines.filter(line => 
+        line !== titleLine && 
+        !line.toLowerCase().includes('score:')
+      );
+      description = contentLines.reduce((a, b) => a.length > b.length ? a : b, '').trim();
+    }
+
+    // Find match score - try multiple formats
+    let matchScore = 85; // Default score
+    const scoreLine = lines.find(line => /match.*score|score.*match/i.test(line));
+    if (scoreLine) {
+      const scoreMatch = scoreLine.match(/\d+/);
+      if (scoreMatch) {
+        const parsed = parseInt(scoreMatch[0]);
+        if (!isNaN(parsed) && parsed >= 60 && parsed <= 100) {
+          matchScore = parsed;
+        }
+      }
+    }
+
+    // Only add if we have both title and description
+    if (title && description) {
+      const movie = { title, description, matchScore };
+      console.log('Parsed movie:', movie);
+      movies.push(movie);
+    } else {
+      console.error('Failed to parse movie - missing title or description');
+    }
   }
 
   return movies;

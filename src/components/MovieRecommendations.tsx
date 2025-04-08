@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Movie, MovieRecommendationsProps } from '../types';
 
 export default function MovieRecommendations({ 
@@ -6,8 +6,40 @@ export default function MovieRecommendations({
   isLoading, 
   error,
   onMovieWatched,
-  viewerProfile // New prop
+  viewerProfile
 }: MovieRecommendationsProps & { viewerProfile?: string }) {
+  const [remainingMovies, setRemainingMovies] = useState<Movie[]>(movies);
+  const [currentMovie, setCurrentMovie] = useState<Movie | null>(movies[0] || null);
+
+  // Update state when movies prop changes
+  useEffect(() => {
+    setRemainingMovies(movies);
+    setCurrentMovie(movies[0] || null);
+  }, [movies]);
+
+  const handleMovieWatched = useCallback(async (movieTitle: string) => {
+    if (onMovieWatched) {
+      const replacementMovie = await onMovieWatched(movieTitle);
+      
+      // Remove the current movie from the queue
+      const nextMovies = remainingMovies.slice(1);
+      
+      if (nextMovies.length > 0) {
+        // Show the next movie in queue
+        setCurrentMovie(nextMovies[0]);
+        setRemainingMovies(nextMovies);
+      } else if (replacementMovie) {
+        // If we got a replacement movie and queue is empty, show it
+        setCurrentMovie(replacementMovie);
+        setRemainingMovies([replacementMovie]);
+      } else {
+        // No more movies in queue and no replacement
+        setCurrentMovie(null);
+        setRemainingMovies([]);
+      }
+    }
+  }, [remainingMovies, onMovieWatched]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -24,10 +56,10 @@ export default function MovieRecommendations({
     );
   }
 
-  if (!movies || movies.length === 0) {
+  if (!currentMovie) {
     return (
       <div className="text-gray-400 text-center p-4">
-        No recommendations available. Try answering a few more questions!
+        No more recommendations available. Try answering the questions again for new suggestions!
       </div>
     );
   }
@@ -42,33 +74,34 @@ export default function MovieRecommendations({
       )}
       
       <div className="grid gap-6">
-        {movies.map((movie: Movie, index: number) => (
-          <div 
-            key={movie.title + index}
-            className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700
-                     transition-all duration-300 hover:border-blue-500/50 group"
-          >
-            <div className="flex justify-between items-start mb-3">
-              <h3 className="text-xl font-semibold text-white/90 group-hover:text-blue-400 transition-colors">
-                {movie.title}
-              </h3>
-              <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-sm rounded-full">
-                {movie.matchScore}% Match
-              </span>
-            </div>
-            <p className="text-white/70 leading-relaxed mb-4">
-              {movie.description}
-            </p>
-            {onMovieWatched && (
-              <button
-                onClick={() => onMovieWatched(movie.title)}
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                I've watched this
-              </button>
-            )}
+        <div 
+          key={currentMovie.title}
+          className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700
+                   transition-all duration-300 hover:border-blue-500/50 group"
+        >
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-xl font-semibold text-white/90 group-hover:text-blue-400 transition-colors">
+              {currentMovie.title}
+            </h3>
+            <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-sm rounded-full">
+              {currentMovie.matchScore}% Match
+            </span>
           </div>
-        ))}
+          <p className="text-white/70 leading-relaxed mb-4">
+            {currentMovie.description}
+          </p>
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => handleMovieWatched(currentMovie.title)}
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              I've watched this
+            </button>
+            <span className="text-sm text-gray-500">
+              {remainingMovies.length - 1} more recommendations in queue
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

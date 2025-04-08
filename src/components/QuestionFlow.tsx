@@ -2,6 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Question, QuestionFlowProps } from '../types';
 
 const allQuestions: Question[] = [
+  // Language Selection for Movies
+  {
+    id: 0,
+    category: 'language',
+    question: "What languages do you prefer for movies?",
+    options: [
+      "English",
+      "Malayalam",
+      "Hindi",
+      "Tamil",
+      "Korean"
+    ]
+  },
   // Language & Subtitles
   {
     id: 1,
