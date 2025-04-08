@@ -1,24 +1,11 @@
 import { NextResponse } from 'next/server';
 import { Groq } from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../../../config/env';
 
 export async function POST(request: Request) {
-  // Check for API key before initializing Groq
-  if (!process.env.GROQ_API_KEY) {
-    console.error('Groq API key not configured');
-    return NextResponse.json(
-      { error: 'Groq API key not configured' },
-      { status: 500 }
-    );
-  }
-
-  const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY,
-  });
-
   try {
-    const { answers } = await request.json();
-    console.log('Received answers:', answers);
+    const { answers, model = 'groq' } = await request.json();
     
     if (!answers || !Array.isArray(answers) || answers.length !== 5) {
       console.error('Invalid answers format received:', answers);
@@ -52,27 +39,69 @@ Match Score: [85-100]
 
 Make each recommendation thoughtful and personally tailored to the viewer's preferences.`;
 
-    console.log('Sending request to Groq with prompt...');
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert film curator with deep knowledge of cinema across all eras, genres, and styles. Your recommendations are thoughtful, diverse, and personally tailored to each viewer's preferences."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
-      temperature: 0.7,
-      max_tokens: 1000,
-      top_p: 1,
-      stream: false,
-      stop: null
-    });
+    let response;
+    
+    if (model === 'gemini') {
+      if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json(
+          { error: 'Gemini API key not configured' },
+          { status: 500 }
+        );
+      }
 
-    const response = completion.choices[0]?.message?.content;
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const geminiModel = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+      });
+
+      const result = await geminiModel.generateContent({
+        contents: [{
+          role: "user",
+          parts: [{ text: prompt }],
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 8192,
+        },
+      });
+
+      response = result.response.text();
+    } else {
+      // Default to Groq
+      if (!process.env.GROQ_API_KEY) {
+        return NextResponse.json(
+          { error: 'Groq API key not configured' },
+          { status: 500 }
+        );
+      }
+
+      const groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY,
+      });
+
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert film curator with deep knowledge of cinema across all eras, genres, and styles. Your recommendations are thoughtful, diverse, and personally tailored to each viewer's preferences."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 1,
+        stream: false,
+        stop: null
+      });
+
+      response = completion.choices[0]?.message?.content;
+    }
     
     if (!response) {
       return NextResponse.json(
@@ -162,8 +191,6 @@ function parseAIResponse(response: string): Array<{
     const scoreMatch = scoreLine ? scoreLine.match(/\d+/) : null;
     const matchScore = scoreMatch ? parseInt(scoreMatch[0]) : 85;
 
-    console.log('Parsed movie:', { title, description, matchScore });
-
     if (title && description) {
       movies.push({
         title,
@@ -173,6 +200,5 @@ function parseAIResponse(response: string): Array<{
     }
   }
 
-  console.log('Final parsed movies:', movies);
   return movies;
 }

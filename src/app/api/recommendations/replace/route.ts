@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Groq } from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config, validateConfig } from '../../../../config/env';
 
 try {
@@ -8,19 +9,9 @@ try {
   console.error('Environment configuration error:', error);
 }
 
-// Check for API key before processing
-if (!process.env.GROQ_API_KEY) {
-  console.error('Groq API key not configured');
-  throw new Error('Groq API key not configured');
-}
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
-
 export async function POST(request: Request) {
   try {
-    const { answers, watchedMovie } = await request.json();
+    const { answers, watchedMovie, model = 'groq' } = await request.json();
     
     if (!answers || !Array.isArray(answers) || answers.length !== 5 || !watchedMovie) {
       return NextResponse.json(
@@ -48,26 +39,69 @@ Important:
 - Follow the format EXACTLY as shown above
 - Include all three elements: numbered title, description, and match score`;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert film curator with deep knowledge of cinema across all eras, genres, and styles. Your recommendations are thoughtful, diverse, and personally tailored to each viewer's preferences."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
-      temperature: 0.7,
-      max_tokens: 500,
-      top_p: 1,
-      stream: false,
-      stop: null
-    });
+    let response;
+    
+    if (model === 'gemini') {
+      if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json(
+          { error: 'Gemini API key not configured' },
+          { status: 500 }
+        );
+      }
 
-    const response = completion.choices[0]?.message?.content;
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const geminiModel = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+      });
+
+      const result = await geminiModel.generateContent({
+        contents: [{
+          role: "user",
+          parts: [{ text: prompt }],
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 8192,
+        },
+      });
+
+      response = result.response.text();
+    } else {
+      // Default to Groq
+      if (!process.env.GROQ_API_KEY) {
+        return NextResponse.json(
+          { error: 'Groq API key not configured' },
+          { status: 500 }
+        );
+      }
+
+      const groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY,
+      });
+
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert film curator with deep knowledge of cinema across all eras, genres, and styles. Your recommendations are thoughtful, diverse, and personally tailored to each viewer's preferences."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        temperature: 0.7,
+        max_tokens: 500,
+        top_p: 1,
+        stream: false,
+        stop: null
+      });
+
+      response = completion.choices[0]?.message?.content;
+    }
     
     if (!response) {
       return NextResponse.json(
@@ -136,6 +170,14 @@ function parseAIResponse(response: string): Array<{
     .replace(/^\d+\.\s*/, '') // Remove number prefix
     .replace(/^Movie Title:\s*/i, '') // Remove "Movie Title:" prefix
     .trim();
+
+  // Handle year in title if present
+  const yearMatch = title.match(/\((\d{4})\)/);
+  const year = yearMatch ? yearMatch[0] : '';
+  title = title.replace(/\((\d{4})\)/, '').trim();
+  if (year) {
+    title = `${title} ${year}`;
+  }
 
   // Find description (line after "Description:")
   const descIndex = lines.findIndex(line => /^Description:/i.test(line));

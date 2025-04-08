@@ -3,7 +3,9 @@
 import React, { useState } from 'react';
 import QuestionFlow from '../components/QuestionFlow';
 import MovieRecommendations from '../components/MovieRecommendations';
+import ModelSelector from '../components/ModelSelector';
 import { Movie } from '../types';
+import { config } from '../config/env';
 
 export default function Home() {
   const [showQuestions, setShowQuestions] = useState(true);
@@ -11,6 +13,7 @@ export default function Home() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [error, setError] = useState<string>();
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<'groq' | 'gemini'>(config.defaultModel);
 
   const handleQuestionComplete = async (answers: string[]) => {
     setIsLoading(true);
@@ -24,7 +27,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ answers, model: selectedModel }),
       });
 
       const data = await response.json();
@@ -37,7 +40,6 @@ export default function Home() {
         throw new Error('Invalid response format');
       }
 
-      // Validate each movie in the recommendations
       const validatedMovies = data.recommendations.map(movie => {
         if (!movie.title || !movie.description || typeof movie.matchScore !== 'number') {
           throw new Error('Invalid movie data format');
@@ -69,7 +71,8 @@ export default function Home() {
         },
         body: JSON.stringify({ 
           answers: userAnswers,
-          watchedMovie: movieTitle
+          watchedMovie: movieTitle,
+          model: selectedModel
         }),
       });
 
@@ -79,7 +82,6 @@ export default function Home() {
         throw new Error(data.error || 'Failed to get replacement movie');
       }
 
-      // Validate the replacement movie data
       const movie = data.movie;
       if (!movie || !movie.title || !movie.description || typeof movie.matchScore !== 'number') {
         throw new Error('Invalid replacement movie data');
@@ -95,6 +97,11 @@ export default function Home() {
   return (
     <main className="min-h-screen py-12 px-4 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
       <div className="max-w-4xl mx-auto relative">
+        <ModelSelector 
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          disabled={!showQuestions}
+        />
         {showQuestions ? (
           <div className="space-y-8">
             <h1 className="text-5xl font-bold text-center mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 text-transparent bg-clip-text">
