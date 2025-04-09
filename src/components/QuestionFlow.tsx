@@ -2,21 +2,70 @@ import React, { useState, useEffect } from 'react';
 import { Question, QuestionFlowProps } from '../types';
 
 const allQuestions: Question[] = [
-  // Genre
+  // Basic Questions - Simple preferences to start with
   {
     id: 1,
-    category: 'genre',
-    question: "What should be happening in the first 5 minutes of your perfect movie?",
+    category: 'viewing_experience',
+    question: "What's your ideal movie intensity level?",
     options: [
-      "An epic chase scene",
-      "A mysterious murder",
-      "A meet-cute moment",
-      "Mind-bending visuals",
-      "Surprise me!"
+      "Keep it light and fun",
+      "Some tension is good",
+      "Edge of your seat",
+      "Mind-blowing intensity",
+      "Whatever serves the story"
     ]
   },
   {
     id: 2,
+    category: 'viewing_experience',
+    question: "How do you prefer your movies to be paced?",
+    options: [
+      "Fast and action-packed",
+      "Steady and engaging",
+      "Thoughtful and measured",
+      "Mix of fast and slow",
+      "Any well-executed pace"
+    ]
+  },
+  {
+    id: 3,
+    category: 'film_elements',
+    question: "What catches your attention most in movies?",
+    options: [
+      "Visual effects and cinematography",
+      "Music and sound",
+      "Story and plot",
+      "Acting performances",
+      "All aspects equally"
+    ]
+  },
+  {
+    id: 4,
+    category: 'genre',
+    question: "What kind of opening scenes grab you?",
+    options: [
+      "Action and excitement",
+      "Mystery and intrigue",
+      "Character moments",
+      "Dramatic events",
+      "Any engaging opening"
+    ]
+  },
+  // Intermediate Questions - More specific preferences
+  {
+    id: 5,
+    category: 'film_elements',
+    question: "Pick your ideal movie setting:",
+    options: [
+      "Modern city life",
+      "Fantasy worlds",
+      "Historical periods",
+      "Futuristic settings",
+      "Any compelling world"
+    ]
+  },
+  {
+    id: 6,
     category: 'genre',
     question: "Pick the movie villain you'd most want to watch:",
     options: [
@@ -28,70 +77,7 @@ const allQuestions: Question[] = [
     ]
   },
   {
-    id: 3,
-    category: 'genre',
-    question: "What should the movie focus on most?",
-    options: [
-      "Heart-pounding action",
-      "Mind-bending mystery",
-      "Emotional journey",
-      "Comedy and fun",
-      "Mix of everything"
-    ]
-  },
-  // Film Elements
-  {
-    id: 4,
-    category: 'film_elements',
-    question: "Pick your ideal movie setting:",
-    options: [
-      "Neon-lit cyberpunk city",
-      "Magical fantasy realm",
-      "Gritty urban streets",
-      "Distant alien worlds",
-      "Any immersive world"
-    ]
-  },
-  {
-    id: 5,
-    category: 'film_elements',
-    question: "What should stand out most in the movie?",
-    options: [
-      "Epic orchestral score",
-      "Stunning visuals",
-      "Sharp witty dialogue",
-      "Deep emotional moments",
-      "Everything balanced"
-    ]
-  },
-  // Viewing Experience
-  {
-    id: 6,
-    category: 'viewing_experience',
-    question: "How should the story unfold?",
-    options: [
-      "Fast-paced thrill ride",
-      "Slow-burn mystery",
-      "Character-driven journey",
-      "Multiple interwoven plots",
-      "Natural progression"
-    ]
-  },
-  {
     id: 7,
-    category: 'viewing_experience',
-    question: "What's your ideal movie intensity level?",
-    options: [
-      "Keep it light and fun",
-      "Some tension is good",
-      "Edge of your seat",
-      "Mind-blowing intensity",
-      "Whatever serves the story"
-    ]
-  },
-  // Film Elements
-  {
-    id: 8,
     category: 'film_elements',
     question: "Who should lead this movie?",
     options: [
@@ -103,88 +89,63 @@ const allQuestions: Question[] = [
     ]
   },
   {
-    id: 9,
+    id: 8,
     category: 'film_elements',
-    question: "Pick the key relationship in the movie:",
+    question: "What kind of relationships interest you most?",
     options: [
-      "Enemies to lovers",
-      "Unlikely partnerships",
+      "Romance and love",
       "Family bonds",
-      "Complex rivalries",
+      "Complex friendships",
+      "Rivalry and conflict",
       "Any authentic connection"
     ]
   },
-  // Era
+  // Complex Questions - Deeper preferences and impact
+  {
+    id: 9,
+    category: 'era',
+    question: "What time period interests you most in films?",
+    options: [
+      "Classic era (Pre-1970s)",
+      "Modern day",
+      "Recent past",
+      "Future scenarios",
+      "Any period done well"
+    ]
+  },
   {
     id: 10,
-    category: 'era',
-    question: "When should this movie take place?",
+    category: 'impact',
+    question: "How should the movie make you feel?",
     options: [
-      "Historical past",
-      "Present day",
-      "Near future",
-      "Far future",
-      "Timeless setting"
+      "Emotionally moved",
+      "Intellectually stimulated",
+      "Pure entertainment",
+      "Deep reflection",
+      "Any powerful impact"
     ]
   },
   {
     id: 11,
-    category: 'film_elements',
-    question: "Pick the visual style:",
+    category: 'impact',
+    question: "What's your preferred movie ending type?",
     options: [
-      "Realistic and gritty",
-      "Stylized and artistic",
-      "Bright and colorful",
-      "Dark and moody",
-      "Whatever fits the story"
+      "Happy and satisfying",
+      "Thought-provoking",
+      "Plot twist",
+      "Open-ended",
+      "Any well-crafted ending"
     ]
   },
-  // Impact
   {
     id: 12,
-    category: 'impact',
-    question: "How should this movie affect the viewer?",
-    options: [
-      "Make them think deeply",
-      "Touch their heart",
-      "Pure entertainment",
-      "Leave them speechless",
-      "Any lasting impression"
-    ]
-  },
-  {
-    id: 13,
-    category: 'impact',
-    question: "Pick a must-have scene type:",
-    options: [
-      "Mind-blowing reveal",
-      "Character transformation",
-      "Epic confrontation",
-      "Emotional breakthrough",
-      "Any powerful moment"
-    ]
-  },
-  {
-    id: 14,
-    category: 'impact',
-    question: "After the movie ends, viewers should feel:",
-    options: [
-      "Amazed and inspired",
-      "Emotionally moved",
-      "Intellectually stimulated",
-      "Thoroughly entertained",
-      "Open to interpretation"
-    ]
-  },
-  {
-    id: 15,
     category: 'viewing_experience',
-    question: "Choose the perfect viewing setup:",
+    question: "What's your ideal way to experience a movie?",
     options: [
-      "Epic IMAX experience",
-      "Cozy home theater",
-      "Late night silence",
-      "Social watch party",
+      "Theater experience",
+      "Cozy home viewing",
+      "Social watching",
+      "Solo immersion",
       "Any comfortable setting"
     ]
   }
@@ -197,8 +158,8 @@ export default function QuestionFlow({ onComplete, minQuestions = 5 }: QuestionF
   const [canSkip, setCanSkip] = useState(false);
 
   useEffect(() => {
-    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-    setQuestions(shuffled);
+    // Set questions in order instead of shuffling them
+    setQuestions(allQuestions);
   }, []);
 
   const handleAnswer = (answer: string) => {
